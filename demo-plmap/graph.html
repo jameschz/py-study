@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<body scroll="no">
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0px;
+      padding: 0px;
+      overflow: hidden;
+    }
+
+    .main {
+      margin: 0px;
+      padding: 0px;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <script src="https://unpkg.com/gojs@2.3.11/release/go.js"></script>
+  <script src="data/json2.js"></script>
+  <script src="data/graph.js"></script>
+  <script id="code">
+    function init() {
+      const $ = go.GraphObject.make;
+
+      myDiagram =
+        new go.Diagram("myDiagramDiv",  // must be the ID or reference to div
+          {
+            initialAutoScale: go.Diagram.UniformToFill,
+            layout: $(go.LayeredDigraphLayout, { alignOption: go.LayeredDigraphLayout.AlignAll, layerSpacing: 800 })
+            // other Layout properties are set by the layout function, defined below
+          });
+
+      // the node template describes how each Node should be constructed
+      myDiagram.nodeTemplate =
+        $(go.Node, 'Auto',
+          $(go.Shape, "Ellipse", { strokeWidth: 8 }, new go.Binding("fill", "color")),
+          $(go.TextBlock, { margin: new go.Margin(100, 100, 100, 100), font: '120pt Georgia, serif', scale: 2 }, new go.Binding("text", "key"))
+        )
+
+      // the link template describes how each Link should be constructed
+      myDiagram.linkTemplate =
+        $(go.Link,
+          {},  // link route should avoid nodes
+          $(go.Shape, { strokeWidth: 6 }, new go.Binding("stroke", "color"))
+        );
+
+      // the Model holds only the essential information describing the diagram
+      myDiagram.model = new go.GraphLinksModel(nodeDataArray, linkDataArray);
+
+      // after click node, highlight related nodes and links
+      myDiagram.addDiagramListener('ChangedSelection', () => {
+        var sel = myDiagram.selection.first();
+        if (sel === null) return false;
+        resetAllData();
+        myDiagram.model.commit(m => {
+          // highlight clicked node
+          m.nodeDataArray.forEach(node => {
+            if (node.key == sel.data.key) {
+              m.set(node, "color", "pink");
+            }
+          });
+          // highlight related links
+          var relatedNodes = [];
+          m.linkDataArray.forEach(link => {
+            if (link.from == sel.data.key || link.to == sel.data.key) {
+              m.set(link, "color", "red");
+              if (!relatedNodes.includes(link.from)) {
+                relatedNodes.push(link.from)
+              }
+              if (!relatedNodes.includes(link.to)) {
+                relatedNodes.push(link.to)
+              }
+            }
+          });
+          // highlight related nodes
+          m.nodeDataArray.forEach(node => {
+            if (relatedNodes.includes(node.key)) {
+              m.set(node, "color", "pink");
+            }
+          });
+        });
+      });
+
+      // reset all nodes and links data
+      function resetAllData(){
+        myDiagram.model.commit(m => {
+          m.nodeDataArray.forEach(node => {
+            m.set(node, "color", "lightgreen");
+          });
+          m.linkDataArray.forEach(link => {
+            m.set(link, "color", "black");
+          });
+        });
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <div id="main" class="main">
+    <div id="myDiagramDiv"
+      style="border: 1px solid black; width:100%; height: 100%; position: relative; -webkit-tap-highlight-color: rgba(255, 255, 255, 0); cursor: auto; overflow: hidden;">
+      <canvas tabindex="0" width="5000" height="5000"
+        style="position: absolute; top: 0px; left: 0px; z-index: 2; user-select: none; touch-action: none; width: 5000px; height: 5000px; cursor: auto;"></canvas>
+    </div>
+  </div>
+
+</body>
+
+</html>
